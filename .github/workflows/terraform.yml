@@ -18,7 +18,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: src/terraform/eks/default
+        working-directory: terraform/eks/default
 
     permissions:
       contents: read
@@ -39,6 +39,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
+      #  Debug step to verify credentials actually work
       - name: Verify AWS identity
         run: aws sts get-caller-identity
 
