@@ -1,3 +1,13 @@
+terraform {
+  backend "s3" {
+    bucket         = "retail-store-terraform"
+    key            = "eks/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "terraform-locks"
+    encrypt        = true
+  }
+}
+
 locals {
   security_groups_active = !var.opentelemetry_enabled
 }
