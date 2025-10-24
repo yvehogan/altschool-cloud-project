@@ -101,18 +101,7 @@ jobs:
           yarn nx run-many -t container --projects=tag:service \
             --tags public.ecr.aws/aws-containers/retail-store-sample-{projectName}:e2e --parallel=5
 
-      - name: Load images
-        env:
-          IMAGE_TAG: e2e
-        run: |
-          kind load docker-image public.ecr.aws/aws-containers/retail-store-sample-catalog:$IMAGE_TAG
-          kind load docker-image public.ecr.aws/aws-containers/retail-store-sample-cart:$IMAGE_TAG
-          kind load docker-image public.ecr.aws/aws-containers/retail-store-sample-checkout:$IMAGE_TAG
-          kind load docker-image public.ecr.aws/aws-containers/retail-store-sample-orders:$IMAGE_TAG
-          kind load docker-image public.ecr.aws/aws-containers/retail-store-sample-ui:$IMAGE_TAG
-          docker system prune --all --force
-
-      - name: Deploy to Kind
+      - name: Deploy to EKS
         env:
           IMAGE_TAG: e2e
         run: |
@@ -132,3 +121,12 @@ jobs:
           kubectl get pods -A
           kubectl describe pods -A | tail -n 200
           kubectl logs -A --tail=100 || true
+
+# === Local Workflow Testing ===
+# To check if your GitHub Actions workflow will be successful before pushing:
+# 1. Use https://github.com/nektos/act to run workflows locally.
+#    - Install: `brew install act` (Mac) or see https://github.com/nektos/act#installation
+#    - Run: `act -j kubernetes` (or `act` to run all jobs)
+# 2. Note: Some steps (like AWS, EKS, Docker, Helm) may require local credentials and Docker installed.
+# 3. For complex workflows, test individual commands/scripts in your terminal before adding to workflow.
+# 4. Always validate YAML syntax: `yamllint .github/workflows/e2e-test.yml`
