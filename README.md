@@ -1,180 +1,217 @@
 ![Banner](./docs/images/banner.png)
 
-<div align="center">
-  <div align="center">
+# 🏪 Retail Store Sample App – Cloud-Native Deployment on AWS EKS
 
-[![Stars](https://img.shields.io/github/stars/aws-containers/retail-store-sample-app)](Stars)
-![GitHub License](https://img.shields.io/github/license/aws-containers/retail-store-sample-app?color=green)
-![Dynamic JSON Badge](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Faws-containers%2Fretail-store-sample-app%2Frefs%2Fheads%2Fmain%2F.release-please-manifest.json&query=%24%5B%22.%22%5D&label=release)
-![GitHub Release Date](https://img.shields.io/github/release-date/aws-containers/retail-store-sample-app)
+## 📋 Overview
+This project deploys the **AWS Retail Store Sample Application** — a microservices-based retail demo — to **Amazon EKS (Elastic Kubernetes Service)** using **Terraform** for infrastructure provisioning and **Helm/Kubernetes manifests** for workload orchestration.
 
-  </div>
+The application simulates a modern retail web store consisting of multiple microservices (UI, Catalog, Carts, Checkout, and Orders) connected via REST APIs, with persistence layers using **AWS RDS MySQL**, **PostgreSQL**, **DynamoDB**, and **Redis**.
 
-  <strong>
-  <h2>AWS Containers Retail Sample</h2>
-  </strong>
-</div>
+---
 
-This is a sample application designed to illustrate various concepts related to containers on AWS. It presents a sample retail store application including a product catalog, shopping cart and checkout.
+## 🚀 Architecture Overview
 
-It provides:
+### Microservices
 
-- A demo store-front application with themes, pages to show container and application topology information, generative AI chat bot and utility functions for experimentation and demos.
-- An optional distributed component architecture using various languages and frameworks
-- A variety of different persistence backends for the various components like MariaDB (or MySQL), DynamoDB and Redis
-- The ability to run in different container orchestration technologies like Docker Compose, Kubernetes etc.
-- Pre-built container images for both x86-64 and ARM64 CPU architectures
-- All components instrumented for Prometheus metrics and OpenTelemetry OTLP tracing
-- Support for Istio on Kubernetes
-- Load generator which exercises all of the infrastructure
+| Service      | Description                  | Backend                       |
+|--------------|-----------------------------|-------------------------------|
+| 🖥️ UI        | Frontend web application     | Connects to Catalog, Carts, Checkout |
+| 📦 Catalog   | Product catalog microservice | AWS RDS MySQL (Aurora)        |
+| 🛒 Carts     | Shopping cart service        | DynamoDB                      |
+| 💳 Checkout  | Checkout/order processing    | Redis                         |
+| 📑 Orders    | Order management             | PostgreSQL + RabbitMQ         |
 
-See the [features documentation](./docs/features.md) for more information.
+### Cloud Services
 
-**This project is intended for educational purposes only and not for production use**
+| Service                        | Description                                   |
+|--------------------------------|-----------------------------------------------|
+| ☁️ Amazon EKS                  | Orchestrates Kubernetes workloads             |
+| 🗄️ Amazon RDS (Aurora MySQL & PostgreSQL) | Persistent relational databases      |
+| 🧩 Amazon DynamoDB             | NoSQL backend for Carts                       |
+| ⚡ Amazon ElastiCache (Redis)   | In-memory cache for Checkout                  |
+| 🌐 AWS Application Load Balancer (ALB) | Public entry point for the UI         |
+| 🔐 AWS IAM + S3                | Credentials and Terraform remote state         |
 
-![Screenshot](/docs/images/screenshot.png)
+---
 
-## Application Architecture
+## 🧱 Project Structure
 
-The application has been deliberately over-engineered to generate multiple de-coupled components. These components generally have different infrastructure dependencies, and may support multiple "backends" (example: Carts service supports MongoDB or DynamoDB).
-
-![Architecture](/docs/images/architecture.png)
-
-| Component                  | Language | Container Image                                                             | Helm Chart                                                                        | Description                             |
-| -------------------------- | -------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------- |
-| [UI](./src/ui/)            | Java     | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-ui)       | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-ui-chart)       | Store user interface                    |
-| [Catalog](./src/catalog/)  | Go       | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-catalog)  | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-catalog-chart)  | Product catalog API                     |
-| [Cart](./src/cart/)        | Java     | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-cart)     | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-cart-chart)     | User shopping carts API                 |
-| [Orders](./src/orders)     | Java     | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-orders)   | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-orders-chart)   | User orders API                         |
-| [Checkout](./src/checkout) | Node     | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-checkout) | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-checkout-chart) | API to orchestrate the checkout process |
-
-## Quickstart
-
-The following sections provide quickstart instructions for various platforms.
-
-### Docker
-
-This deployment method will run the application as a single container on your local machine using `docker`.
-
-Pre-requisites:
-
-- Docker installed locally
-
-Run the container:
-
-```
-docker run -it --rm -p 8888:8080 public.ecr.aws/aws-containers/retail-store-sample-ui:1.0.0
+```text
+.
+├── terraform/
+│   ├── eks/          # EKS cluster and node configuration
+│   ├── lib/          # Common modules and dependencies
+│   ├── ecs/          # (Optional) ECS variant
+│   └── apprunner/    # (Optional) App Runner variant
+├── charts/           # Helm charts for each microservice
+├── k8s/              # Kubernetes manifests
+├── scripts/          # Deployment helper scripts
+├── .github/workflows/# CI/CD pipelines
+└── README.md         # Documentation
 ```
 
-Open the frontend in a browser window:
+---
 
-```
-http://localhost:8888
-```
+## ⚙️ Deployment Steps
 
-To stop the container in `docker` use Ctrl+C.
+### 1️⃣ Prerequisites
 
-### Docker Compose
+Ensure the following are installed locally:
 
-This deployment method will run the application on your local machine using `docker-compose`.
+| Tool      | Link                                              |
+|-----------|---------------------------------------------------|
+| AWS CLI   | [Install](https://aws.amazon.com/cli/)            |
+| kubectl   | [Install](https://kubernetes.io/docs/tasks/tools/) |
+| Helm      | [Install](https://helm.sh/docs/intro/install/)    |
+| Terraform | [Install](https://developer.hashicorp.com/terraform/downloads) |
 
-Pre-requisites:
+---
 
-- Docker installed locally
+### 2️⃣ AWS Authentication
 
-Download the latest Docker Compose file and use `docker compose` to run the application containers:
+Verify AWS CLI credentials:
 
-```
-wget https://github.com/aws-containers/retail-store-sample-app/releases/latest/download/docker-compose.yaml
-
-DB_PASSWORD='<some password>' docker compose --file docker-compose.yaml up
-```
-
-Open the frontend in a browser window:
-
-```
-http://localhost:8888
+```bash
+aws configure list
 ```
 
-To stop the containers in `docker compose` use Ctrl+C. To delete all the containers and related resources run:
+---
 
-```
-docker compose -f docker-compose.yaml down
-```
+### 3️⃣ Infrastructure Deployment via Terraform
 
-### Kubernetes
-
-This deployment method will run the application in an existing Kubernetes cluster.
-
-Pre-requisites:
-
-- Kubernetes cluster
-- `kubectl` installed locally
-
-Use `kubectl` to run the application:
-
-```
-kubectl apply -f https://github.com/aws-containers/retail-store-sample-app/releases/latest/download/kubernetes.yaml
-kubectl wait --for=condition=available deployments --all
+```bash
+cd terraform/eks
+terraform init
+terraform apply -auto-approve
 ```
 
-Get the URL for the frontend load balancer like so:
+This creates:
 
+- EKS cluster and worker nodes
+- RDS instances (Aurora MySQL & PostgreSQL)
+- DynamoDB and Redis
+- IAM roles, VPC, and ALB
+
+After deployment, view outputs:
+
+```bash
+terraform output
 ```
-kubectl get svc ui
+
+---
+
+### 4️⃣ Configure Secrets in Kubernetes
+
+After Terraform completes, set the database credentials for the Catalog service:
+
+```bash
+kubectl delete secret catalog -n default
+kubectl create secret generic catalog \
+  -n default \
+  --from-literal=DB_USER=catalog_user \
+  --from-literal=DB_PASSWORD='********'
 ```
 
-To remove the application use `kubectl` again:
+Confirm the secret:
 
+```bash
+kubectl get secret catalog -n default -o yaml
 ```
-kubectl delete -f https://github.com/aws-containers/retail-store-sample-app/releases/latest/download/kubernetes.yaml
+
+---
+
+### 5️⃣ Deploy the Application
+
+```bash
+kubectl apply -f k8s/
 ```
 
-### Terraform
+Wait for all pods to become ready:
 
-The following options are available to deploy the application using Terraform:
+```bash
+kubectl get pods -n default -w
+```
 
-| Name                                             | Description                                                                                                     |
-| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| [Amazon EKS](./terraform/eks/default/)           | Deploys the application to Amazon EKS using other AWS services for dependencies, such as RDS, DynamoDB etc.     |
-| [Amazon EKS (Minimal)](./terraform/eks/minimal/) | Deploys the application to Amazon EKS using in-cluster dependencies instead of RDS, DynamoDB etc.               |
-| [Amazon ECS](./terraform/ecs/default/)           | Deploys the application to Amazon ECS using other AWS services for dependencies, such as RDS, DynamoDB etc.     |
-| [AWS App Runner](./terraform/apprunner/)         | Deploys the application to AWS App Runner using other AWS services for dependencies, such as RDS, DynamoDB etc. |
+**Expected output:**
 
-## Security
+| NAME                        | READY | STATUS  | RESTARTS | AGE |
+|-----------------------------|-------|---------|----------|-----|
+| carts-7dc985f489-hw9p2      | 1/1   | Running | 0        | 5m  |
+| catalog-7b58794d5c-fp8t9    | 1/1   | Running | 0        | 5m  |
+| checkout-5dbdfd89db-vzbc9   | 1/1   | Running | 0        | 5m  |
+| orders-5c6f4f984-flrbc      | 1/1   | Running | 0        | 5m  |
+| ui-645868f79b-flg8l         | 1/1   | Running | 0        | 5m  |
 
-See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
+---
 
-## License
+### 6️⃣ Access the Application
 
-This project is licensed under the MIT-0 License.
+Get the LoadBalancer URL:
 
-This package depends on and may incorporate or retrieve a number of third-party
-software packages (such as open source packages) at install-time or build-time
-or run-time ("External Dependencies"). The External Dependencies are subject to
-license terms that you must accept in order to use this package. If you do not
-accept all of the applicable license terms, you should not use this package. We
-recommend that you consult your company’s open source approval policy before
-proceeding.
+```bash
+kubectl get svc ui -n default
+```
 
-Provided below is a list of External Dependencies and the applicable license
-identification as indicated by the documentation associated with the External
-Dependencies as of Amazon's most recent review.
+**Sample output:**
 
-THIS INFORMATION IS PROVIDED FOR CONVENIENCE ONLY. AMAZON DOES NOT PROMISE THAT
-THE LIST OR THE APPLICABLE TERMS AND CONDITIONS ARE COMPLETE, ACCURATE, OR
-UP-TO-DATE, AND AMAZON WILL HAVE NO LIABILITY FOR ANY INACCURACIES. YOU SHOULD
-CONSULT THE DOWNLOAD SITES FOR THE EXTERNAL DEPENDENCIES FOR THE MOST COMPLETE
-AND UP-TO-DATE LICENSING INFORMATION.
+| NAME | TYPE         | CLUSTER-IP      | EXTERNAL-IP                                         | PORT(S)      | AGE |
+|------|--------------|-----------------|-----------------------------------------------------|--------------|-----|
+| ui   | LoadBalancer | 172.20.68.228   | k8s-default-ui-312340c72a-3ca99e18625c8fb9.elb.us-east | 80:30474/TCP | 38h |
 
-YOUR USE OF THE EXTERNAL DEPENDENCIES IS AT YOUR SOLE RISK. IN NO EVENT WILL
-AMAZON BE LIABLE FOR ANY DAMAGES, INCLUDING WITHOUT LIMITATION ANY DIRECT,
-INDIRECT, CONSEQUENTIAL, SPECIAL, INCIDENTAL, OR PUNITIVE DAMAGES (INCLUDING
-FOR ANY LOSS OF GOODWILL, BUSINESS INTERRUPTION, LOST PROFITS OR DATA, OR
-COMPUTER FAILURE OR MALFUNCTION) ARISING FROM OR RELATING TO THE EXTERNAL
-DEPENDENCIES, HOWEVER CAUSED AND REGARDLESS OF THE THEORY OF LIABILITY, EVEN
-IF AMAZON HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. THESE LIMITATIONS
-AND DISCLAIMERS APPLY EXCEPT TO THE EXTENT PROHIBITED BY APPLICABLE LAW.
+---
 
-MariaDB Community License - [LICENSE](https://mariadb.com/kb/en/mariadb-licenses/)
-MySQL Community Edition - [LICENSE](https://github.com/mysql/mysql-server/blob/8.0/LICENSE)
+## 🧩 Troubleshooting
+
+| 🧠 Issue                                   | ⚙️ Cause                                 | 🩺 Solution                                                        |
+|--------------------------------------------|------------------------------------------|--------------------------------------------------------------------|
+| ❌ Error 1045 (28000): Access denied for user | Wrong DB credentials or secret not mounted | Recreate secret with correct password and restart pod              |
+| ⚠️ CrashLoopBackOff on catalog             | DB unreachable / subnet / password mismatch | Check RDS endpoint, update secret, re-rollout deployment           |
+| 💥 UI shows 500 error                      | Backend microservice unavailable         | Verify catalog, carts, checkout pods are healthy                   |
+| 🌍 DNS_PROBE_FINISHED_NXDOMAIN             | ALB DNS not ready                        | Wait a few minutes or re-check `kubectl get svc ui`                |
+| 🔒 Access denied by security group          | Wrong VPC or subnet config               | Check RDS SG inbound rules (allow EKS node SG)                     |
+
+View service logs:
+
+```bash
+kubectl logs -l app.kubernetes.io/name=catalog -n default --tail=50
+kubectl logs -l app.kubernetes.io/name=ui -n default --tail=50
+```
+
+---
+
+## 🔁 CI/CD Setup (GitHub Actions)
+
+The included workflow automates:
+
+- Terraform validation and apply
+- Kubernetes deployments
+- Helm packaging and push
+
+**Required Secrets (in GitHub → Repo → Settings → Secrets → Actions):**
+
+| Name                | Description                  |
+|---------------------|-----------------------------|
+| AWS_ACCESS_KEY_ID   | Your AWS access key         |
+| AWS_SECRET_ACCESS_KEY | Your AWS secret key       |
+| AWS_REGION          | Region (e.g. us-east-1)     |
+
+---
+
+## ✅ Verification Checklist
+
+| Check                        | Status |
+|------------------------------|--------|
+| All pods Running             | ✅     |
+| UI accessible via LoadBalancer| ✅     |
+| Catalog connected to MySQL   | ✅     |
+| Terraform apply completed cleanly | ✅ |
+| README, manifests committed  | ✅     |
+
+---
+
+## 👩‍💻 Author
+
+**Evelyn Ita**  
+Cloud & DevOps Engineer — AWS | Terraform | Kubernetes | CI/CD
+
+---
