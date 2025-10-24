@@ -1,3 +1,111 @@
+# name: E2E Test
+
+# on:
+#   push:
+#     branches:
+#       - main
+#   pull_request:
+#     branches:
+#       - main
+#   workflow_dispatch:
+
+# permissions: {}
+
+# jobs:
+#   docker:
+#     name: Docker E2E Tests
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - name: "Setup Env"
+#         uses: ./.github/actions/setup-env
+#       - name: Compose up
+#         shell: devenv shell bash -- -e {0}
+#         run: |
+#           yarn nx compose:up ui
+#           sleep 60
+#       - name: Test
+#         shell: devenv shell bash -- -e {0}
+#         run: |
+#           CYPRESS_BASE_URL='http://localhost:8888' yarn nx execute e2e
+#       - name: Compose down
+#         shell: devenv shell bash -- -e {0}
+#         run: |
+#           yarn nx compose:down ui
+
+#   docker-multi:
+#     name: Docker E2E Tests (Multi)
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - name: "Setup Env"
+#         uses: ./.github/actions/setup-env
+#       - name: Compose up
+#         shell: devenv shell bash -- -e {0}
+#         run: |
+#           DB_PASSWORD='test123' yarn nx compose:up
+#           sleep 60
+#       - name: Test
+#         shell: devenv shell bash -- -e {0}
+#         run: |
+#           CYPRESS_BASE_URL='http://localhost:8888' yarn nx execute e2e
+#       - name: Load Generator
+#         shell: devenv shell bash -- -e {0}
+#         run: |
+#           cd src/load-generator
+#           bash scripts/run-test.sh
+#       - name: Compose down
+#         shell: devenv shell bash -- -e {0}
+#         run: |
+#           DB_PASSWORD='test123' yarn nx compose:down
+
+#   kubernetes:
+#     name: Kubernetes E2E Tests
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - name: "Setup Env"
+#         uses: ./.github/actions/setup-env
+
+#       - name: Build images
+#         shell: devenv shell bash -- -e {0}
+#         run: |
+#           yarn nx run-many -t build --projects=tag:service --parallel=1
+
+#           yarn nx run-many -t container --projects=tag:service \
+#             --tags public.ecr.aws/aws-containers/retail-store-sample-{projectName}:e2e --parallel=5
+
+#       - name: Kind cluster
+#         uses: helm/kind-action@v1.12.0
+#         with:
+#           cluster_name: kind
+#           version: v0.17.0
+
+#       - name: Load images
+#         env:
+#           IMAGE_TAG: e2e
+#         run: |
+#           kind load docker-image public.ecr.aws/aws-containers/retail-store-sample-catalog:$IMAGE_TAG
+#           kind load docker-image public.ecr.aws/aws-containers/retail-store-sample-cart:$IMAGE_TAG
+#           kind load docker-image public.ecr.aws/aws-containers/retail-store-sample-checkout:$IMAGE_TAG
+#           kind load docker-image public.ecr.aws/aws-containers/retail-store-sample-orders:$IMAGE_TAG
+#           kind load docker-image public.ecr.aws/aws-containers/retail-store-sample-ui:$IMAGE_TAG
+
+#           docker system prune --all --force
+
+#       - name: Deploy
+#         shell: devenv shell bash -- -e {0}
+#         env:
+#           IMAGE_TAG: e2e
+#         run: |
+#           NODE_PORT=30000 helmfile apply -f src/app/helmfile.yaml --wait --timeout 10m --skip-diff-on-install
+
+#           kubectl wait --for=condition=Ready pod -l app.kubernetes.io/owner=retail-store-sample --timeout 180s || exit_code=$?
+
+#       - name: Test
+#         shell: devenv shell bash -- -e {0}
+#         run: |
+#           bash scripts/e2e-kind.sh
 name: E2E Test
 
 on:
@@ -17,17 +125,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: "Setup Env"
         uses: ./.github/actions/setup-env
+
       - name: Compose up
         shell: devenv shell bash -- -e {0}
         run: |
           yarn nx compose:up ui
           sleep 60
+
       - name: Test
         shell: devenv shell bash -- -e {0}
         run: |
           CYPRESS_BASE_URL='http://localhost:8888' yarn nx execute e2e
+
       - name: Compose down
         shell: devenv shell bash -- -e {0}
         run: |
@@ -38,22 +150,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: "Setup Env"
         uses: ./.github/actions/setup-env
+
       - name: Compose up
         shell: devenv shell bash -- -e {0}
         run: |
           DB_PASSWORD='test123' yarn nx compose:up
           sleep 60
+
       - name: Test
         shell: devenv shell bash -- -e {0}
         run: |
           CYPRESS_BASE_URL='http://localhost:8888' yarn nx execute e2e
+
       - name: Load Generator
         shell: devenv shell bash -- -e {0}
         run: |
           cd src/load-generator
           bash scripts/run-test.sh
+
       - name: Compose down
         shell: devenv shell bash -- -e {0}
         run: |
@@ -64,22 +181,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: "Setup Env"
         uses: ./.github/actions/setup-env
 
-      - name: Build images
-        shell: devenv shell bash -- -e {0}
+      - name: Install dependencies
         run: |
-          yarn nx run-many -t build --projects=tag:service --parallel=1
+          echo "Installing Helm..."
+          curl -L https://get.helm.sh/helm-v3.14.0-linux-amd64.tar.gz -o helm.tar.gz
+          tar -zxvf helm.tar.gz
+          sudo mv linux-amd64/helm /usr/local/bin/
+          helm version
 
-          yarn nx run-many -t container --projects=tag:service \
-            --tags public.ecr.aws/aws-containers/retail-store-sample-{projectName}:e2e --parallel=5
+          echo "Installing Helmfile..."
+          curl -L https://github.com/helmfile/helmfile/releases/download/v0.156.0/helmfile_linux_amd64.tar.gz -o helmfile.tar.gz
+          tar -zxvf helmfile.tar.gz
+          sudo mv helmfile /usr/local/bin/
+          helmfile --version
 
-      - name: Kind cluster
+      - name: Create Kind cluster
         uses: helm/kind-action@v1.12.0
         with:
           cluster_name: kind
           version: v0.17.0
+
+      - name: Build images
+        run: |
+          yarn nx run-many -t build --projects=tag:service --parallel=1
+          yarn nx run-many -t container --projects=tag:service \
+            --tags public.ecr.aws/aws-containers/retail-store-sample-{projectName}:e2e --parallel=5
 
       - name: Load images
         env:
@@ -90,19 +220,25 @@ jobs:
           kind load docker-image public.ecr.aws/aws-containers/retail-store-sample-checkout:$IMAGE_TAG
           kind load docker-image public.ecr.aws/aws-containers/retail-store-sample-orders:$IMAGE_TAG
           kind load docker-image public.ecr.aws/aws-containers/retail-store-sample-ui:$IMAGE_TAG
-
           docker system prune --all --force
 
-      - name: Deploy
-        shell: devenv shell bash -- -e {0}
+      - name: Deploy to Kind
         env:
           IMAGE_TAG: e2e
         run: |
-          NODE_PORT=30000 helmfile apply -f src/app/helmfile.yaml --wait --skip-diff-on-install
+          NODE_PORT=30000 helmfile apply -f src/app/helmfile.yaml --wait --timeout 20m --skip-diff-on-install
+          echo "⏳ Waiting for pods to become Ready..."
+          kubectl wait --for=condition=Ready pod -l app.kubernetes.io/owner=retail-store-sample --timeout 600s || true
+          kubectl get pods -A
 
-          kubectl wait --for=condition=Ready pod -l app.kubernetes.io/owner=retail-store-sample --timeout 180s || exit_code=$?
-
-      - name: Test
-        shell: devenv shell bash -- -e {0}
+      - name: Run E2E tests
         run: |
           bash scripts/e2e-kind.sh
+
+      - name: Debug Pods on Failure
+        if: failure()
+        run: |
+          echo "⚠️ Gathering diagnostics..."
+          kubectl get pods -A
+          kubectl describe pods -A | tail -n 200
+          kubectl logs -A --tail=100 || true
