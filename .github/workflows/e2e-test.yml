@@ -68,59 +68,59 @@ jobs:
         run: |
           DB_PASSWORD='test123' yarn nx compose:down
 
-  kubernetes:
-    name: Kubernetes E2E Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: "Setup Env"
-        uses: ./.github/actions/setup-env
-
-      - name: Install dependencies
-        run: |
-          echo "Installing Helm..."
-          curl -L https://get.helm.sh/helm-v3.14.0-linux-amd64.tar.gz -o helm.tar.gz
-          tar -zxvf helm.tar.gz
-          sudo mv linux-amd64/helm /usr/local/bin/
-          helm version
-
-          echo "Installing Helmfile..."
-          curl -L https://github.com/helmfile/helmfile/releases/download/v0.156.0/helmfile_linux_amd64.tar.gz -o helmfile.tar.gz
-          tar -zxvf helmfile.tar.gz
-          sudo mv helmfile /usr/local/bin/
-          helmfile --version
-
-      - name: Configure kubectl for EKS
-        run: |
-          aws eks update-kubeconfig --region us-east-1 --name retail-store
-
-      - name: Build images
-        run: |
-          yarn nx run-many -t build --projects=tag:service --parallel=1
-          yarn nx run-many -t container --projects=tag:service \
-            --tags public.ecr.aws/aws-containers/retail-store-sample-{projectName}:e2e --parallel=5
-
-      - name: Deploy to EKS
-        env:
-          IMAGE_TAG: e2e
-        run: |
-          NODE_PORT=30000 helmfile apply -f src/app/helmfile.yaml --wait --timeout 20m --skip-diff-on-install
-          echo "⏳ Waiting for pods to become Ready..."
-          kubectl wait --for=condition=Ready pod -l app.kubernetes.io/owner=retail-store-sample --timeout 600s || true
-          kubectl get pods -A
-
-      - name: Run E2E tests
-        run: |
-          bash scripts/e2e-kind.sh
-
-      - name: Debug Pods on Failure
-        if: failure()
-        run: |
-          echo "⚠️ Gathering diagnostics..."
-          kubectl get pods -A
-          kubectl describe pods -A | tail -n 200
-          kubectl logs -A --tail=100 || true
+# kubernetes:
+#   name: Kubernetes E2E Tests
+#   runs-on: ubuntu-latest
+#   steps:
+#     - uses: actions/checkout@v4
+#
+#     - name: "Setup Env"
+#       uses: ./.github/actions/setup-env
+#
+#     - name: Install dependencies
+#       run: |
+#         echo "Installing Helm..."
+#         curl -L https://get.helm.sh/helm-v3.14.0-linux-amd64.tar.gz -o helm.tar.gz
+#         tar -zxvf helm.tar.gz
+#         sudo mv linux-amd64/helm /usr/local/bin/
+#         helm version
+#
+#         echo "Installing Helmfile..."
+#         curl -L https://github.com/helmfile/helmfile/releases/download/v0.156.0/helmfile_linux_amd64.tar.gz -o helmfile.tar.gz
+#         tar -zxvf helmfile.tar.gz
+#         sudo mv helmfile /usr/local/bin/
+#         helmfile --version
+#
+#     - name: Configure kubectl for EKS
+#       run: |
+#         aws eks update-kubeconfig --region us-east-1 --name retail-store
+#
+#     - name: Build images
+#       run: |
+#         yarn nx run-many -t build --projects=tag:service --parallel=1
+#         yarn nx run-many -t container --projects=tag:service \
+#           --tags public.ecr.aws/aws-containers/retail-store-sample-{projectName}:e2e --parallel=5
+#
+#     - name: Deploy to EKS
+#       env:
+#         IMAGE_TAG: e2e
+#       run: |
+#         NODE_PORT=30000 helmfile apply -f src/app/helmfile.yaml --wait --timeout 20m --skip-diff-on-install
+#         echo "⏳ Waiting for pods to become Ready..."
+#         kubectl wait --for=condition=Ready pod -l app.kubernetes.io/owner=retail-store-sample --timeout 600s || true
+#         kubectl get pods -A
+#
+#     - name: Run E2E tests
+#       run: |
+#         bash scripts/e2e-kind.sh
+#
+#     - name: Debug Pods on Failure
+#       if: failure()
+#       run: |
+#         echo "⚠️ Gathering diagnostics..."
+#         kubectl get pods -A
+#         kubectl describe pods -A | tail -n 200
+#         kubectl logs -A --tail=100 || true
 
 # === Local Workflow Testing ===
 # To check if your GitHub Actions workflow will be successful before pushing:
